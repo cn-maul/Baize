@@ -1,0 +1,20 @@
+version: "1.0"
+
+platforms:
+  - id: "SiliconFlow"
+    name: "硅基流动"
+    type: "openai"
+    base_url: "https://api.siliconflow.cn/v1"
+    api_key: "sk-dtjjevghyakifvhjangrvylkezksuhybuesqdvduafzcwbdi"
+    models:
+      - "Qwen/Qwen3-8B"
+      - "deepseek-ai/DeepSeek-V3.2"
+
+  - id: "claude_backup"
+    name: "Claude备用"
+    type: "anthropic"
+    base_url: "https://api.anthropic.com"
+    api_key: "sk-ant-xxxxxxx"
+    models:
+      - "claude-3-opus-20240229"
+      - "claude-3-sonnet-20240229"

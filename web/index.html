@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白泽(Baize) AI网关</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        accent: '#10b981',
+                        dark: '#1e293b',
+                        light: '#f8fafc'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 6px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: #f1f5f9;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 3px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-robot text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-dark">白泽 (Baize) AI网关</h1>
+            </div>
+            <div class="text-sm text-gray-500">
+                <span id="status" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <i class="fa fa-circle text-green-500 mr-1"></i> 服务正常
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容 -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- 配置区域 -->
+        <section class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-4 text-dark">配置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="platform" class="block text-sm font-medium text-gray-700 mb-1">选择平台</label>
+                    <select id="platform" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="">加载中...</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="model" class="block text-sm font-medium text-gray-700 mb-1">选择模型</label>
+                    <select id="model" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="">请先选择平台</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- 对话区域 -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 左侧对话历史 -->
+            <div class="lg:col-span-8">
+                <div class="bg-white rounded-lg shadow-sm h-[600px] flex flex-col">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-dark">对话历史</h2>
+                    </div>
+                    <div id="chat-history" class="flex-grow p-4 overflow-y-auto scrollbar-thin">
+                        <!-- 系统消息 -->
+                        <div class="flex mb-4">
+                            <div class="flex-shrink-0 mr-3">
+                                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-primary">
+                                    <i class="fa fa-robot"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow">
+                                <div class="bg-gray-100 rounded-lg p-3 max-w-[80%]">
+                                    <p class="text-gray-800">你好！我是白泽(Baize) AI助手，很高兴为你服务。请选择一个平台和模型，开始我们的对话吧。</p>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">系统 · 刚刚</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 输入区域 -->
+                    <div class="p-4 border-t border-gray-200">
+                        <form id="chat-form" class="flex space-x-2">
+                            <input type="text" id="message" placeholder="输入消息..." class="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors">
+                                <i class="fa fa-paper-plane mr-1"></i> 发送
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧信息 -->
+            <div class="lg:col-span-4">
+                <!-- API信息 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <h2 class="text-lg font-semibold mb-4 text-dark">API信息</h2>
+                    <div class="space-y-2 text-sm">
+                        <p><span class="font-medium">聊天接口:</span> <code class="bg-gray-100 px-2 py-1 rounded">POST /api/v1/chat</code></p>
+                        <p><span class="font-medium">平台列表:</span> <code class="bg-gray-100 px-2 py-1 rounded">GET /api/v1/platforms</code></p>
+                        <p><span class="font-medium">服务地址:</span> <span id="api-url">http://localhost:8080</span></p>
+                    </div>
+                </div>
+
+                <!-- 平台信息 -->
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h2 class="text-lg font-semibold mb-4 text-dark">平台信息</h2>
+                    <div id="platform-info" class="space-y-3">
+                        <div class="animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                        <div class="animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-4 mt-8">
+        <div class="container mx-auto px-4 text-center text-sm">
+            <p>© 2026 白泽 (Baize) AI网关 - 版本 1.0.0</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // API基础URL
+        const API_BASE_URL = 'http://localhost:8080/api/v1';
+
+        // 全局变量
+        let platforms = [];
+        let currentPlatform = null;
+        let currentModel = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 加载平台列表
+                await loadPlatforms();
+                // 绑定事件
+                bindEvents();
+            } catch (error) {
+                console.error('初始化失败:', error);
+                updateStatus('error', '服务连接失败');
+            }
+        });
+
+        // 加载平台列表
+        async function loadPlatforms() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/platforms`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                platforms = data.platforms;
+                
+                // 更新平台下拉菜单
+                updatePlatformSelect();
+                // 更新平台信息
+                updatePlatformInfo();
+                
+                updateStatus('success', '服务正常');
+            } catch (error) {
+                console.error('加载平台失败:', error);
+                document.getElementById('platform').innerHTML = '<option value="">加载失败</option>';
+                updateStatus('error', '无法加载平台列表');
+            }
+        }
+
+        // 更新平台下拉菜单
+        function updatePlatformSelect() {
+            const platformSelect = document.getElementById('platform');
+            platformSelect.innerHTML = '<option value="">请选择平台</option>';
+            
+            platforms.forEach(platform => {
+                const option = document.createElement('option');
+                option.value = platform.id;
+                option.textContent = `${platform.name} (${platform.type})`;
+                platformSelect.appendChild(option);
+            });
+        }
+
+        // 更新模型下拉菜单
+        function updateModelSelect() {
+            const modelSelect = document.getElementById('model');
+            modelSelect.innerHTML = '<option value="">请选择模型</option>';
+            
+            if (currentPlatform) {
+                const platform = platforms.find(p => p.id === currentPlatform);
+                if (platform) {
+                    platform.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        modelSelect.appendChild(option);
+                    });
+                }
+            }
+        }
+
+        // 更新平台信息
+        function updatePlatformInfo() {
+            const platformInfo = document.getElementById('platform-info');
+            platformInfo.innerHTML = '';
+            
+            platforms.forEach(platform => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-50 rounded-lg';
+                div.innerHTML = `
+                    <h3 class="font-medium text-dark">${platform.name}</h3>
+                    <p class="text-sm text-gray-500">类型: ${platform.type}</p>
+                    <p class="text-sm text-gray-500">模型数量: ${platform.models.length}</p>
+                    <div class="mt-2">
+                        <p class="text-xs text-gray-500">可用模型:</p>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            ${platform.models.map(model => `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${model}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+                platformInfo.appendChild(div);
+            });
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            if (!currentPlatform) {
+                showError('请选择一个平台');
+                return;
+            }
+            if (!currentModel) {
+                showError('请选择一个模型');
+                return;
+            }
+
+            // 添加用户消息到历史
+            addMessageToHistory('user', message);
+            messageInput.value = '';
+
+            // 显示加载状态
+            const loadingId = addMessageToHistory('system', '<i class="fa fa-spinner fa-spin mr-2"></i> 思考中...', true);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        platform: currentPlatform,
+                        model: currentModel,
+                        message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // 移除加载消息
+                removeMessageFromHistory(loadingId);
+                
+                // 添加AI回复
+                if (data.error) {
+                    addMessageToHistory('system', `错误: ${data.error}`);
+                } else {
+                    addMessageToHistory('ai', data.reply);
+                }
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                // 移除加载消息
+                removeMessageFromHistory(loadingId);
+                // 添加错误消息
+                addMessageToHistory('system', `发送失败: ${error.message}`);
+            }
+        }
+
+        // 添加消息到历史
+        function addMessageToHistory(sender, content, isLoading = false) {
+            const chatHistory = document.getElementById('chat-history');
+            const messageId = `msg-${Date.now()}`;
+            
+            let html = '';
+            
+            if (sender === 'user') {
+                html = `
+                    <div id="${messageId}" class="flex justify-end mb-4">
+                        <div class="flex-grow">
+                            <div class="bg-primary text-white rounded-lg p-3 max-w-[80%] ml-auto">
+                                <p>${content}</p>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1 text-right">你 · 刚刚</div>
+                        </div>
+                        <div class="flex-shrink-0 ml-3">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
+                                <i class="fa fa-user"></i>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (sender === 'ai' || sender === 'system') {
+                html = `
+                    <div id="${messageId}" class="flex mb-4">
+                        <div class="flex-shrink-0 mr-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-primary">
+                                <i class="fa fa-robot"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="bg-gray-100 rounded-lg p-3 max-w-[80%]">
+                                <p>${content}</p>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">${sender === 'ai' ? 'AI' : '系统'} · 刚刚</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            chatHistory.insertAdjacentHTML('beforeend', html);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            return messageId;
+        }
+
+        // 从历史中移除消息
+        function removeMessageFromHistory(messageId) {
+            const message = document.getElementById(messageId);
+            if (message) {
+                message.remove();
+            }
+        }
+
+        // 显示错误消息
+        function showError(message) {
+            addMessageToHistory('system', `错误: ${message}`);
+        }
+
+        // 更新状态
+        function updateStatus(type, message) {
+            const status = document.getElementById('status');
+            
+            if (type === 'success') {
+                status.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800';
+                status.innerHTML = `<i class="fa fa-circle text-green-500 mr-1"></i> ${message}`;
+            } else if (type === 'error') {
+                status.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';
+                status.innerHTML = `<i class="fa fa-circle text-red-500 mr-1"></i> ${message}`;
+            }
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 平台选择变化
+            document.getElementById('platform').addEventListener('change', function() {
+                currentPlatform = this.value;
+                updateModelSelect();
+            });
+
+            // 模型选择变化
+            document.getElementById('model').addEventListener('change', function() {
+                currentModel = this.value;
+            });
+
+            // 表单提交
+            document.getElementById('chat-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                sendMessage();
+            });
+
+            // 回车键发送
+            document.getElementById('message').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
