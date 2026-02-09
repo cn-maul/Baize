@@ -1,4 +1,4 @@
-module baize
+module github.com/cn-maul/Baize
 
 go 1.25.5
 
