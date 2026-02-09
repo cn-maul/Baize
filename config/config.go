@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"baize/domain"
+	"github.com/cn-maul/Baize/domain"
 )
 
 // 配置缓存

@@ -94,8 +94,8 @@ platforms:
 ```go
 import (
     "context"
-    "baize/config"
-    "baize/provider"
+    "github.com/cn-maul/Baize/config"
+    "github.com/cn-maul/Baize/provider"
 )
 
 // 加载配置

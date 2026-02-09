@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"baize/domain"
+	"github.com/cn-maul/Baize/domain"
 )
 
 // AnthropicProvider Anthropic提供商实现
