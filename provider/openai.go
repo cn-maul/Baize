@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"baize/internal/domain"
+	"baize/domain"
 )
 
 // OpenAIProvider OpenAI提供商实现

@@ -3,7 +3,7 @@ package provider
 import (
 	"fmt"
 
-	"baize/internal/domain"
+	"baize/domain"
 )
 
 // ProviderFactory 工厂函数类型，用于创建Provider实例

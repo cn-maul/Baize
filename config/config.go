@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"baize/internal/domain"
+	"baize/domain"
 )
 
 // 配置缓存
