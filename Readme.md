@@ -47,9 +47,13 @@ baize/
 
 通过接口抽象抹平不同AI厂商的差异：
 
-* 定义一个接口 `AIProvider`，包含 `Chat()` 方法
+* 定义一个接口 `AIProvider`，包含以下方法：
+  - `Chat()`: 基本的单次聊天方法
+  - `ChatWithContext()`: 带上下文的聊天方法，支持维护对话历史
+  - `ChatStream()`: 流式输出的聊天方法，实时显示AI的回复
+  - `ChatStreamWithContext()`: 同时支持上下文和流式输出的聊天方法
 * `OpenAIProvider` 和 `AnthropicProvider` 分别实现这个接口
-* 上层业务只需要调用 `provider.Chat()`，不需要关心底层是谁
+* 上层业务只需要调用相应的方法，不需要关心底层是谁
 
 ### 工厂模式 (Factory Pattern)
 
@@ -94,6 +98,7 @@ platforms:
 ```go
 import (
     "context"
+    "fmt"
     "github.com/cn-maul/Baize/config"
     "github.com/cn-maul/Baize/provider"
 )
@@ -104,8 +109,35 @@ cfg, err := config.LoadConfig("path/to/config.yaml")
 // 创建Provider实例
 prov, err := provider.CreateProvider(&cfg.Platforms[0])
 
-// 发送聊天请求
+ctx := context.Background()
+
+// 基本的聊天请求
 reply, err := prov.Chat(ctx, "model-name", "Hello!")
+
+// 带上下文的聊天请求
+messages := []provider.Message{
+    {Role: "user", Content: "你好，你是谁？"},
+    {Role: "assistant", Content: "我是AI助手"},
+    {Role: "user", Content: "你能做什么？"},
+}
+contextReply, err := prov.ChatWithContext(ctx, "model-name", messages)
+
+// 流式输出的聊天请求
+err := prov.ChatStream(ctx, "model-name", "你好，请简单介绍一下自己", func(chunk string) error {
+    fmt.Print(chunk) // 实时显示AI的回复
+    return nil
+})
+
+// 带上下文的流式输出聊天请求
+streamMessages := []provider.Message{
+    {Role: "user", Content: "你好，你是谁？"},
+    {Role: "assistant", Content: "我是AI助手"},
+    {Role: "user", Content: "你能做什么？请详细说明"},
+}
+err := prov.ChatStreamWithContext(ctx, "model-name", streamMessages, func(chunk string) error {
+    fmt.Print(chunk) // 实时显示AI的回复
+    return nil
+})
 ```
 
 ## 技术栈
@@ -124,6 +156,8 @@ reply, err := prov.Chat(ctx, "model-name", "Hello!")
 - ✅ 提供商实现（OpenAI, Anthropic）
 - ✅ 配置缓存机制
 - ✅ 项目已改造为可重用的Go库
+- ✅ 上下文支持功能
+- ✅ 流式输出功能
 
 项目已完成所有核心功能，可直接使用。
 
