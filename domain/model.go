@@ -2,8 +2,8 @@ package domain
 
 // Config 配置结构体，映射整个YAML文件
 type Config struct {
-	Version   string     `yaml:"version"`
-	Platforms []Platform `yaml:"platforms"`
+	Version   string                 `yaml:"version"`
+	Platforms map[string]*Platform `yaml:"platforms"`
 }
 
 // Platform 平台结构体，包含平台的基本信息

@@ -16,14 +16,22 @@
 ```text
 baize/
 ├── config/                    # 配置加载模块 (读取 YAML)
+│   └── config.go
 ├── domain/                    # 领域模型 (定义核心 Structs，如 Platform, Model)
+│   └── model.go
 ├── provider/                  # 核心业务 (OpenAI/Anthropic 的具体实现)
 │   ├── openai.go
 │   ├── anthropic.go
 │   ├── factory.go             # 工厂模式，用于生产具体的 Provider
-│   └── interface.go           # 核心接口定义
+│   ├── interface.go           # 核心接口定义
+│   ├── client.go              # 共享HTTP客户端
+│   ├── common.go              # 公共逻辑
+│   ├── errors.go              # 错误定义
+│   └── options.go             # Option模式支持
 ├── pkg/                       # 【公共代码】通用工具库
 │   └── utils/                 # 通用工具 (如 HTTP 请求封装、日志工具)
+│       ├── http.go
+│       └── logger.go
 
 ├── config.yaml                # 【配置】默认的配置文件
 ├── go.mod                     # 依赖管理
@@ -35,9 +43,21 @@ baize/
 ### 目录详细说明：
 
 1. **`config/`**: 配置加载模块，用于加载和解析 YAML 配置文件
+   - `config.go`: 配置加载和解析逻辑
 2. **`domain/`**: 领域模型，定义核心数据结构如 Platform, Model
+   - `model.go`: 核心数据结构定义
 3. **`provider/`**: 核心业务逻辑，实现不同 AI 厂商的接口
+   - `openai.go`: OpenAI 提供商实现
+   - `anthropic.go`: Anthropic 提供商实现
+   - `factory.go`: 工厂模式，用于生产具体的 Provider
+   - `interface.go`: 核心接口定义
+   - `client.go`: 共享 HTTP 客户端实现
+   - `common.go`: 公共逻辑封装
+   - `errors.go`: 错误定义
+   - `options.go`: Option 模式支持
 4. **`pkg/utils/`**: 通用工具库，如 HTTP 请求封装、日志工具
+   - `http.go`: HTTP 工具函数
+   - `logger.go`: 日志工具实现
 
 ## 核心设计模式与理念
 
@@ -62,6 +82,26 @@ baize/
 ### 配置驱动 (Config Driven)
 
 所有的变动（增加平台、换 Key、加模型）都只修改 YAML 文件，不需要重新编译代码。
+
+## 性能优化
+
+为了提高库的性能和可靠性，我们进行了以下优化：
+
+### 1. 性能提升
+- **替换 LineScanner**：使用标准库 `bufio.Scanner` 替换了自定义的低性能实现，解决了错误处理问题
+- **实现共享 HTTP 客户端**：创建了配置了连接池的共享 HTTP 客户端，提高了网络请求效率
+- **优化字符串拼接**：使用 `strings.Builder` 替代了直接的字符串拼接，减少了内存分配
+- **消除重复代码**：提取了公共逻辑到 `BaseProvider`，减少了代码重复率
+
+### 2. 功能增强
+- **添加 HTTP 状态码检查**：对所有 HTTP 请求添加了状态码检查，确保正确处理 4xx/5xx 错误
+- **集成日志记录**：在关键操作中添加了详细的日志记录，包括请求/响应信息和错误处理
+- **添加配置验证增强**：实现了更严格的配置验证，包括 URL 格式检查、API Key 长度验证和平台类型检查
+- **添加 Option 模式支持**：实现了灵活的配置选项机制，支持设置超时、重试次数和日志级别
+
+### 3. 质量保证
+- **修复编译错误**：解决了所有编译错误，确保代码可以正常构建
+- **提高代码可读性**：优化了代码结构和命名，添加了必要的注释
 
 ## 配置文件设计规范 (config.yaml)
 
@@ -99,15 +139,24 @@ platforms:
 import (
     "context"
     "fmt"
+    "time"
     "github.com/cn-maul/Baize/config"
     "github.com/cn-maul/Baize/provider"
+    "github.com/cn-maul/Baize/pkg/utils"
 )
 
 // 加载配置
 cfg, err := config.LoadConfig("path/to/config.yaml")
 
-// 创建Provider实例
-prov, err := provider.CreateProvider(&cfg.Platforms[0])
+// 创建Provider实例（使用默认选项）
+prov, err := provider.CreateProvider(&cfg.Platforms["openai"])
+
+// 使用Option模式创建Provider（自定义配置）
+provWithOptions, err := provider.CreateProvider(&cfg.Platforms["openai"],
+    provider.WithTimeout(60*time.Second),
+    provider.WithMaxRetries(3),
+    provider.WithLogLevel(utils.DebugLevel),
+)
 
 ctx := context.Background()
 
@@ -154,12 +203,23 @@ err := prov.ChatStreamWithContext(ctx, "model-name", streamMessages, func(chunk 
 - ✅ 配置管理模块
 - ✅ 核心接口定义
 - ✅ 提供商实现（OpenAI, Anthropic）
-- ✅ 配置缓存机制
-- ✅ 项目已改造为可重用的Go库
 - ✅ 上下文支持功能
 - ✅ 流式输出功能
+- ✅ 性能优化
+  - ✅ 替换LineScanner为标准库bufio.Scanner
+  - ✅ 实现共享HTTP客户端
+  - ✅ 优化字符串拼接
+  - ✅ 消除重复代码
+- ✅ 功能增强
+  - ✅ 添加HTTP状态码检查
+  - ✅ 集成日志记录
+  - ✅ 添加配置验证增强
+  - ✅ 添加Option模式支持
+- ✅ 质量保证
+  - ✅ 修复编译错误
+  - ✅ 提高代码可读性
 
-项目已完成所有核心功能，可直接使用。
+项目已完成所有核心功能和优化，可直接在生产环境中使用。
 
 ## 项目信息
 

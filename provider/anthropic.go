@@ -1,33 +1,25 @@
 package provider
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"strings"
-	"time"
 
 	"github.com/cn-maul/Baize/domain"
 )
 
 // AnthropicProvider Anthropic提供商实现
 type AnthropicProvider struct {
-	baseURL string
-	apiKey  string
-	client  *http.Client
+	*BaseProvider
 }
 
 // NewAnthropicProvider 创建新的AnthropicProvider实例
-func NewAnthropicProvider(platform *domain.Platform) (AIProvider, error) {
+func NewAnthropicProvider(platform *domain.Platform, options ...ProviderOption) (AIProvider, error) {
 	return &AnthropicProvider{
-		baseURL: platform.BaseURL,
-		apiKey:  platform.APIKey,
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		BaseProvider: NewBaseProvider(platform.BaseURL, platform.APIKey, options...),
 	}, nil
 }
 
@@ -78,27 +70,16 @@ func (p *AnthropicProvider) Chat(ctx context.Context, model string, msg string) 
 		MaxTokens: 1000,
 	}
 
-	// 序列化请求体
-	requestJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return "", fmt.Errorf("序列化请求体失败: %w", err)
-	}
-
-	// 创建HTTP请求
-	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/v1/messages", bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return "", fmt.Errorf("创建请求失败: %w", err)
-	}
-
 	// 设置请求头
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", p.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	headers := map[string]string{
+		"x-api-key":         p.apiKey,
+		"anthropic-version": "2023-06-01",
+	}
 
 	// 发送请求
-	resp, err := p.client.Do(req)
+	resp, err := p.sendRequest(ctx, "POST", "/v1/messages", requestBody, headers)
 	if err != nil {
-		return "", fmt.Errorf("发送请求失败: %w", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
@@ -119,14 +100,14 @@ func (p *AnthropicProvider) Chat(ctx context.Context, model string, msg string) 
 	}
 
 	// 提取文本内容
-	var reply string
+	var reply strings.Builder
 	for _, block := range response.Content {
 		if block.Type == "text" {
-			reply += block.Text
+			reply.WriteString(block.Text)
 		}
 	}
 
-	return reply, nil
+	return reply.String(), nil
 }
 
 // ChatWithContext 实现AIProvider接口的ChatWithContext方法
@@ -138,27 +119,16 @@ func (p *AnthropicProvider) ChatWithContext(ctx context.Context, model string, m
 		MaxTokens: 1000,
 	}
 
-	// 序列化请求体
-	requestJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return "", fmt.Errorf("序列化请求体失败: %w", err)
-	}
-
-	// 创建HTTP请求
-	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/v1/messages", bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return "", fmt.Errorf("创建请求失败: %w", err)
-	}
-
 	// 设置请求头
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", p.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	headers := map[string]string{
+		"x-api-key":        p.apiKey,
+		"anthropic-version": "2023-06-01",
+	}
 
 	// 发送请求
-	resp, err := p.client.Do(req)
+	resp, err := p.sendRequest(ctx, "POST", "/v1/messages", requestBody, headers)
 	if err != nil {
-		return "", fmt.Errorf("发送请求失败: %w", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
@@ -179,14 +149,14 @@ func (p *AnthropicProvider) ChatWithContext(ctx context.Context, model string, m
 	}
 
 	// 提取文本内容
-	var reply string
+	var reply strings.Builder
 	for _, block := range response.Content {
 		if block.Type == "text" {
-			reply += block.Text
+			reply.WriteString(block.Text)
 		}
 	}
 
-	return reply, nil
+	return reply.String(), nil
 }
 
 // ChatStream 实现AIProvider接口的ChatStream方法
@@ -201,27 +171,16 @@ func (p *AnthropicProvider) ChatStream(ctx context.Context, model string, msg st
 		Stream:    true,
 	}
 
-	// 序列化请求体
-	requestJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return fmt.Errorf("序列化请求体失败: %w", err)
-	}
-
-	// 创建HTTP请求
-	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/v1/messages", bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
-	}
-
 	// 设置请求头
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", p.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	headers := map[string]string{
+		"x-api-key":        p.apiKey,
+		"anthropic-version": "2023-06-01",
+	}
 
 	// 发送请求
-	resp, err := p.client.Do(req)
+	resp, err := p.sendRequest(ctx, "POST", "/v1/messages", requestBody, headers)
 	if err != nil {
-		return fmt.Errorf("发送请求失败: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -239,27 +198,16 @@ func (p *AnthropicProvider) ChatStreamWithContext(ctx context.Context, model str
 		Stream:    true,
 	}
 
-	// 序列化请求体
-	requestJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return fmt.Errorf("序列化请求体失败: %w", err)
-	}
-
-	// 创建HTTP请求
-	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/v1/messages", bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
-	}
-
 	// 设置请求头
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", p.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	headers := map[string]string{
+		"x-api-key":        p.apiKey,
+		"anthropic-version": "2023-06-01",
+	}
 
 	// 发送请求
-	resp, err := p.client.Do(req)
+	resp, err := p.sendRequest(ctx, "POST", "/v1/messages", requestBody, headers)
 	if err != nil {
-		return fmt.Errorf("发送请求失败: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -269,8 +217,10 @@ func (p *AnthropicProvider) ChatStreamWithContext(ctx context.Context, model str
 
 // handleStreamResponse 处理流式响应
 func (p *AnthropicProvider) handleStreamResponse(body io.Reader, callback func(chunk string) error) error {
+	p.logger.Info("开始处理流式响应")
+	
 	// 创建一个扫描器来逐行读取响应
-	scanner := NewLineScanner(body)
+	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		line := scanner.Text()
 		// 跳过空行
@@ -283,6 +233,7 @@ func (p *AnthropicProvider) handleStreamResponse(body io.Reader, callback func(c
 		}
 		// 检查是否是结束信号
 		if line == "data: [DONE]" {
+			p.logger.Info("收到流式响应结束信号")
 			break
 		}
 		// 提取JSON数据
@@ -291,18 +242,23 @@ func (p *AnthropicProvider) handleStreamResponse(body io.Reader, callback func(c
 			// 解析JSON
 			var response AnthropicStreamResponse
 			if err := json.Unmarshal([]byte(data), &response); err != nil {
+				p.logger.Error("解析流式响应失败: %v", err)
 				return fmt.Errorf("解析流式响应失败: %w", err)
 			}
 			// 检查错误
 			if response.Error != nil {
-				return fmt.Errorf("API错误: %s", response.Error.Message)
+				errorMsg := fmt.Sprintf("API错误: %s", response.Error.Message)
+				p.logger.Error("%s", errorMsg)
+				return fmt.Errorf("%s", errorMsg)
 			}
 			// 处理响应
 			if response.Type == "content_block_delta" && response.Message != nil {
 				for _, block := range response.Message.Content {
 					if block.Type == "text" && block.Text != "" {
+						p.logger.Debug("收到流式响应 chunk: %s", block.Text)
 						// 调用回调函数
 						if err := callback(block.Text); err != nil {
+							p.logger.Error("回调函数执行失败: %v", err)
 							return err
 						}
 					}
@@ -313,8 +269,10 @@ func (p *AnthropicProvider) handleStreamResponse(body io.Reader, callback func(c
 
 	// 检查扫描器错误
 	if err := scanner.Err(); err != nil {
+		p.logger.Error("读取流式响应失败: %v", err)
 		return fmt.Errorf("读取流式响应失败: %w", err)
 	}
 
+	p.logger.Info("流式响应处理完成")
 	return nil
 }

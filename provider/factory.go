@@ -7,7 +7,7 @@ import (
 )
 
 // ProviderFactory 工厂函数类型，用于创建Provider实例
-type ProviderFactory func(platform *domain.Platform) (AIProvider, error)
+type ProviderFactory func(platform *domain.Platform, options ...ProviderOption) (AIProvider, error)
 
 // providerFactories 存储不同类型平台的工厂函数
 var providerFactories = map[string]ProviderFactory{
@@ -21,7 +21,7 @@ func RegisterProviderFactory(providerType string, factory ProviderFactory) {
 }
 
 // CreateProvider 根据平台配置创建Provider实例
-func CreateProvider(platform *domain.Platform) (AIProvider, error) {
+func CreateProvider(platform *domain.Platform, options ...ProviderOption) (AIProvider, error) {
 	// 查找对应的工厂函数
 	factory, exists := providerFactories[platform.Type]
 	if !exists {
@@ -29,5 +29,5 @@ func CreateProvider(platform *domain.Platform) (AIProvider, error) {
 	}
 
 	// 使用工厂函数创建Provider实例
-	return factory(platform)
+	return factory(platform, options...)
 }

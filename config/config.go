@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -56,24 +57,39 @@ func validateConfig(config *domain.Config) error {
 	}
 
 	// 检查每个平台的有效性
-	for i, platform := range config.Platforms {
+	for name, platform := range config.Platforms {
 		if platform.ID == "" {
-			return fmt.Errorf("第 %d 个平台缺少ID", i+1)
+			return fmt.Errorf("平台 %s 缺少ID", name)
 		}
 		if platform.Name == "" {
-			return fmt.Errorf("第 %d 个平台缺少名称", i+1)
+			return fmt.Errorf("平台 %s 缺少名称", name)
 		}
 		if platform.Type == "" {
-			return fmt.Errorf("第 %d 个平台缺少类型", i+1)
+			return fmt.Errorf("平台 %s 缺少类型", name)
 		}
 		if platform.BaseURL == "" {
-			return fmt.Errorf("第 %d 个平台缺少基础URL", i+1)
+			return fmt.Errorf("平台 %s 缺少基础URL", name)
 		}
 		if platform.APIKey == "" {
-			return fmt.Errorf("第 %d 个平台缺少API Key", i+1)
+			return fmt.Errorf("平台 %s 缺少API Key", name)
 		}
 		if len(platform.Models) == 0 {
-			return fmt.Errorf("第 %d 个平台没有定义模型", i+1)
+			return fmt.Errorf("平台 %s 没有定义模型", name)
+		}
+
+		// 检查BaseURL格式
+		if _, err := url.Parse(platform.BaseURL); err != nil {
+			return fmt.Errorf("平台 %s 的BaseURL格式无效: %w", name, err)
+		}
+
+		// 检查API Key长度
+		if len(platform.APIKey) < 10 {
+			return fmt.Errorf("平台 %s 的API Key长度不足", name)
+		}
+
+		// 检查平台类型是否支持
+		if platform.Type != "openai" && platform.Type != "anthropic" {
+			return fmt.Errorf("平台 %s 的类型 %s 不支持", name, platform.Type)
 		}
 	}
 
@@ -82,10 +98,17 @@ func validateConfig(config *domain.Config) error {
 
 // GetPlatformByID 根据ID获取平台配置
 func GetPlatformByID(config *domain.Config, platformID string) (*domain.Platform, error) {
+	// 首先尝试通过map键查找
+	if platform, ok := config.Platforms[platformID]; ok {
+		return platform, nil
+	}
+
+	// 然后尝试通过ID字段查找
 	for _, platform := range config.Platforms {
 		if platform.ID == platformID {
-			return &platform, nil
+			return platform, nil
 		}
 	}
+
 	return nil, fmt.Errorf("未找到ID为 %s 的平台", platformID)
 }
