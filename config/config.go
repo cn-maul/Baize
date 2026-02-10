@@ -2,24 +2,12 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
-	"time"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/cn-maul/Baize/domain"
-)
-
-// 配置缓存
-var (
-	configCache     *domain.Config
-	configPathCache string
-	lastLoadTime    time.Time
-	cacheMutex      sync.RWMutex
-	cacheDuration   = 5 * time.Minute // 缓存有效期
 )
 
 // LoadConfig 加载并解析配置文件
@@ -30,13 +18,8 @@ func LoadConfig(configPath string) (*domain.Config, error) {
 		return nil, fmt.Errorf("无法获取配置文件绝对路径: %w", err)
 	}
 
-	// 检查缓存是否有效
-	if config, err := getCachedConfig(absPath); err == nil {
-		return config, nil
-	}
-
 	// 读取配置文件内容
-	data, err := ioutil.ReadFile(absPath)
+	data, err := os.ReadFile(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("无法读取配置文件: %w", err)
 	}
@@ -57,60 +40,7 @@ func LoadConfig(configPath string) (*domain.Config, error) {
 		return nil, err
 	}
 
-	// 更新缓存
-	updateConfigCache(absPath, &config)
-
 	return &config, nil
-}
-
-// getCachedConfig 获取缓存的配置
-func getCachedConfig(configPath string) (*domain.Config, error) {
-	cacheMutex.RLock()
-	defer cacheMutex.RUnlock()
-
-	// 检查缓存是否存在
-	if configCache == nil {
-		return nil, fmt.Errorf("缓存不存在")
-	}
-
-	// 检查配置路径是否匹配
-	if configPathCache != configPath {
-		return nil, fmt.Errorf("配置路径不匹配")
-	}
-
-	// 检查缓存是否过期
-	if time.Since(lastLoadTime) > cacheDuration {
-		return nil, fmt.Errorf("缓存已过期")
-	}
-
-	// 检查配置文件是否被修改
-	if fileInfo, err := os.Stat(configPath); err == nil {
-		if fileInfo.ModTime().After(lastLoadTime) {
-			return nil, fmt.Errorf("配置文件已被修改")
-		}
-	}
-
-	return configCache, nil
-}
-
-// updateConfigCache 更新配置缓存
-func updateConfigCache(configPath string, config *domain.Config) {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-
-	configCache = config
-	configPathCache = configPath
-	lastLoadTime = time.Now()
-}
-
-// ClearConfigCache 清除配置缓存
-func ClearConfigCache() {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-
-	configCache = nil
-	configPathCache = ""
-	lastLoadTime = time.Time{}
 }
 
 // validateConfig 验证配置有效性
